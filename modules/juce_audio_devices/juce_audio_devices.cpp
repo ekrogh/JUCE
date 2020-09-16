@@ -60,7 +60,9 @@
  #import <CoreAudio/AudioHardware.h>
  #import <CoreMIDI/MIDIServices.h>
  #import <AudioToolbox/AudioServices.h>
- #undef Point
+ // eks 16. sept. 2020 aded #import <AVFoundation/AVFoundation.h> 
+ #import <AVFoundation/AVFoundation.h>
+#undef Point
  #undef Component
 
  #include "native/juce_mac_CoreAudio.cpp"
