@@ -1178,10 +1178,11 @@ public:
                        const String& deviceName,
                        AudioDeviceID inputDeviceId, int inputIndex_,
                        AudioDeviceID outputDeviceId, int outputIndex_)
-        : AudioIODevice (deviceName, "CoreAudio"),
-          deviceType (dt),
-          inputIndex (inputIndex_),
-          outputIndex (outputIndex_)
+        : AudioIODevice (deviceName, "CoreAudio")
+        , deviceType (dt)
+        , inputIndex (inputIndex_)
+        , outputIndex (outputIndex_)
+
     {
         internal = [this, &inputDeviceId, &outputDeviceId]
         {
@@ -1395,8 +1396,8 @@ private:
         return noErr;
     }
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CoreAudioIODevice)
-};
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CoreAudioIODevice)
+    };
 
 
 //==============================================================================
@@ -1405,6 +1406,7 @@ class AudioIODeviceCombiner    : public AudioIODevice,
                                  private Timer
 {
 public:
+<<<<<<< HEAD
     AudioIODeviceCombiner (const String& deviceName, CoreAudioIODeviceType* deviceType,
                            std::unique_ptr<CoreAudioIODevice>&& inputDevice,
                            std::unique_ptr<CoreAudioIODevice>&& outputDevice)
@@ -1417,6 +1419,15 @@ public:
     {
         if (getAvailableSampleRates().isEmpty())
             lastError = TRANS("The input and output devices don't share a common sample rate!");
+=======
+    AudioIODeviceCombiner (const String& deviceName, CoreAudioIODeviceType* deviceType)
+        : AudioIODevice (deviceName, "CoreAudio")
+        , Thread (deviceName)
+        , owner (deviceType)
+        // eks 16. sept. 2020 added Pimpl & checkAudioInputAccessPermissions
+        , pimpl (new Pimpl ())
+{
+>>>>>>> f910aab90 (Check audio in permission)
     }
 
     ~AudioIODeviceCombiner() override
@@ -1674,6 +1685,9 @@ public:
     {
         return lastError;
     }
+    
+    // eks 16. sept. 2020 added checkAudioInputAccessPermissions
+    bool checkAudioInputAccessPermissions( )  override        { return pimpl->checkAudioInputAccessPermissions( ); }
 
     int getXRunCount() const noexcept override
     {
@@ -2025,6 +2039,7 @@ private:
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DeviceWrapper)
     };
 
+<<<<<<< HEAD
     /* If the current AudioIODeviceCombiner::callback is nullptr, it sets itself as the callback
        and forwards error related callbacks to the provided callback
     */
@@ -2080,6 +2095,73 @@ private:
     };
 
     DeviceWrapper inputWrapper, outputWrapper;
+=======
+    OwnedArray<DeviceWrapper> devices;
+    
+        // eks 16. sept. 2020 added Pimpl
+        struct Pimpl;
+    //    friend struct Pimpl;
+        std::unique_ptr<Pimpl> pimpl;
+
+
+        
+        // eks 16. sept. 2020 added Pimpl
+    struct Pimpl
+        {
+            Pimpl ()
+            {
+    //            JUCE_IOS_AUDIO_LOG ("Creating macOS audio device");
+            }
+
+            ~Pimpl()
+            {
+            }
+
+        // eks 16. sept. 2020 added checkAudioInputAccessPermissions
+            bool checkAudioInputAccessPermissions( )
+            {
+                AVAuthorizationStatus authStatus = [ AVCaptureDevice authorizationStatusForMediaType : AVMediaTypeAudio ];
+                if ( authStatus == AVAuthorizationStatusAuthorized )
+                {
+                    return true;
+                }
+                else if ( authStatus == AVAuthorizationStatusDenied )
+                {
+                    return false;
+                }
+                else if ( authStatus == AVAuthorizationStatusRestricted )
+                {
+                    return true;
+                }
+                else if ( authStatus == AVAuthorizationStatusNotDetermined )
+                {
+                    return true;
+        //            __block bool isGranted;
+        //            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
+        //             {
+        //                 if ( granted )
+        //                 {
+        //                    NSLog( @"Granted access to %@", mediaType );
+        //                    isGranted = true;
+        //                 }
+        //                 else
+        //                 {
+        //                    NSLog( @"Not granted access to %@", mediaType );
+        //                    isGranted = false;
+        //                 }
+        //             }];
+        //            return true;
+                }
+                else
+                {
+                    return true;
+                }
+                return false;
+            }
+
+            JUCE_DECLARE_NON_COPYABLE (Pimpl)
+        };
+>>>>>>> f910aab90 (Check audio in permission)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioIODeviceCombiner)
 };
