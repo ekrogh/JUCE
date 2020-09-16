@@ -1349,7 +1349,8 @@ public:
             }
 
             if (config.isLinkTimeOptimisationEnabled())
-                s.set ("LLVM_LTO", "YES");
+                s.set( "LLVM_LTO", "YES_THIN" );
+            //s.set ("LLVM_LTO", "YES");
 
             if (config.isFastMathEnabled())
                 s.set ("GCC_FAST_MATH", "YES");
