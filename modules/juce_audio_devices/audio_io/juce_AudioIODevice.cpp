@@ -39,7 +39,7 @@ AudioIODevice::AudioIODevice (const String& deviceName, const String& deviceType
 AudioIODevice::~AudioIODevice() {}
 
 // eks 15. sept. 2020 added checkAudioInputAccessPermissions
-bool AudioIODevice::checkAudioInputAccessPermissions( )        { return true; };
+int AudioIODevice::checkAudioInputAccessPermissions( )        { return 0; };
 
 void AudioIODeviceCallback::audioDeviceError (const String&)    {}
 bool AudioIODevice::setAudioPreprocessingEnabled (bool)         { return false; }

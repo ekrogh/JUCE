@@ -1687,7 +1687,7 @@ public:
     }
     
     // eks 16. sept. 2020 added checkAudioInputAccessPermissions
-    bool checkAudioInputAccessPermissions( )  override        { return pimpl->checkAudioInputAccessPermissions( ); }
+    int checkAudioInputAccessPermissions( )  override        { return pimpl->checkAudioInputAccessPermissions( ); }
 
     int getXRunCount() const noexcept override
     {
@@ -2118,39 +2118,36 @@ private:
             }
 
         // eks 16. sept. 2020 added checkAudioInputAccessPermissions
-            bool checkAudioInputAccessPermissions( )
+            int checkAudioInputAccessPermissions( )
             {
                 AVAuthorizationStatus authStatus = [ AVCaptureDevice authorizationStatusForMediaType : AVMediaTypeAudio ];
                 if ( authStatus == AVAuthorizationStatusAuthorized )
                 {
-                    return true;
+                    return AVAuthorizationStatusAuthorized;
                 }
                 else if ( authStatus == AVAuthorizationStatusDenied )
                 {
-                    return false;
+                    return AVAuthorizationStatusDenied;
                 }
                 else if ( authStatus == AVAuthorizationStatusRestricted )
                 {
-                    return true;
+                    return AVAuthorizationStatusRestricted;
                 }
                 else if ( authStatus == AVAuthorizationStatusNotDetermined )
                 {
-                    return true;
-        //            __block bool isGranted;
-        //            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
-        //             {
-        //                 if ( granted )
-        //                 {
-        //                    NSLog( @"Granted access to %@", mediaType );
-        //                    isGranted = true;
-        //                 }
-        //                 else
-        //                 {
-        //                    NSLog( @"Not granted access to %@", mediaType );
-        //                    isGranted = false;
-        //                 }
-        //             }];
-        //            return true;
+                    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
+                     {
+                         if ( granted )
+                         {
+                            NSLog( @"Granted access to %@", AVMediaTypeAudio );
+                         }
+                         else
+                         {
+                            NSLog( @"Not granted access to %@", AVMediaTypeAudio );
+                         }
+                     }];
+
+                    return AVAuthorizationStatusNotDetermined;
                 }
                 else
                 {
