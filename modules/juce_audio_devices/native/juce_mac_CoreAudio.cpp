@@ -1989,7 +1989,6 @@ private:
     
         // eks 16. sept. 2020 added Pimpl
         struct Pimpl;
-    //    friend struct Pimpl;
         std::unique_ptr<Pimpl> pimpl;
 
 
@@ -1999,7 +1998,6 @@ private:
         {
             Pimpl ()
             {
-    //            JUCE_IOS_AUDIO_LOG ("Creating macOS audio device");
             }
 
             ~Pimpl()
@@ -2009,42 +2007,56 @@ private:
         // eks 16. sept. 2020 added checkAudioInputAccessPermissions
             int checkAudioInputAccessPermissions( )
             {
-                AVAuthorizationStatus authStatus = [ AVCaptureDevice authorizationStatusForMediaType : AVMediaTypeAudio ];
-                if ( authStatus == AVAuthorizationStatusAuthorized )
+                if (@available(macOS 10.14, *)) // macOS 10.14 or newer
                 {
-                    return AVAuthorizationStatusAuthorized;
-                }
-                else if ( authStatus == AVAuthorizationStatusDenied )
-                {
-                    return AVAuthorizationStatusDenied;
-                }
-                else if ( authStatus == AVAuthorizationStatusRestricted )
-                {
-                    return AVAuthorizationStatusRestricted;
-                }
-                else if ( authStatus == AVAuthorizationStatusNotDetermined )
-                {
-                    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
-                     {
-                         if ( granted )
-                         {
-                            NSLog( @"Granted access to %@", AVMediaTypeAudio );
-                         }
-                         else
-                         {
-                            NSLog( @"Not granted access to %@", AVMediaTypeAudio );
-                         }
-                     }];
-
-                    return AVAuthorizationStatusNotDetermined;
+                    AVAuthorizationStatus authStatus = [ AVCaptureDevice authorizationStatusForMediaType : AVMediaTypeAudio ];
+                    
+                    switch (authStatus)
+                    {
+                        case AVAuthorizationStatusAuthorized:
+                            {
+                                return AVAuthorizationStatusAuthorized;
+                                break;
+                            }
+                        case AVAuthorizationStatusDenied:
+                            {
+                                return AVAuthorizationStatusDenied;
+                                break;
+                            }
+                        case AVAuthorizationStatusRestricted:
+                            {
+                                return AVAuthorizationStatusRestricted;
+                                break;
+                            }
+                        case AVAuthorizationStatusNotDetermined:
+                            {
+                                [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
+                                 {
+                                     if ( granted )
+                                     {
+                                        NSLog( @"Granted access to %@", AVMediaTypeAudio );
+                                     }
+                                     else
+                                     {
+                                        NSLog( @"Not granted access to %@", AVMediaTypeAudio );
+                                     }
+                                 }];
+                                return AVAuthorizationStatusNotDetermined;
+                                break;
+                            }
+                        default:
+                            {
+                                return 3;
+                                break;
+                            }
+                    }
                 }
                 else
                 {
-                    return true;
+                    return 3;
                 }
-                return false;
             }
-
+            
             JUCE_DECLARE_NON_COPYABLE (Pimpl)
         };
 

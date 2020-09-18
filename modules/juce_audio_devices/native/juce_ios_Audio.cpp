@@ -542,43 +542,50 @@ struct iOSAudioIODevice::Pimpl      : public AudioPlayHead,
     }
 
 
-// eks 15. sept. 2020 added checkAudioInputAccessPermissions
+    // eks 15. sept. 2020 added checkAudioInputAccessPermissions
     int checkAudioInputAccessPermissions( )
     {
         AVAuthorizationStatus authStatus = [ AVCaptureDevice authorizationStatusForMediaType : AVMediaTypeAudio ];
-        if ( authStatus == AVAuthorizationStatusAuthorized )
+        
+        switch (authStatus)
         {
-            return AVAuthorizationStatusAuthorized;
+            case AVAuthorizationStatusAuthorized:
+                {
+                    return AVAuthorizationStatusAuthorized;
+                    break;
+                }
+            case AVAuthorizationStatusDenied:
+                {
+                    return AVAuthorizationStatusDenied;
+                    break;
+                }
+            case AVAuthorizationStatusRestricted:
+                {
+                    return AVAuthorizationStatusRestricted;
+                    break;
+                }
+            case AVAuthorizationStatusNotDetermined:
+                {
+                    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
+                     {
+                         if ( granted )
+                         {
+                            NSLog( @"Granted access to %@", AVMediaTypeAudio );
+                         }
+                         else
+                         {
+                            NSLog( @"Not granted access to %@", AVMediaTypeAudio );
+                         }
+                     }];
+                    return AVAuthorizationStatusNotDetermined;
+                    break;
+                }
+            default:
+                {
+                    return 3;
+                    break;
+                }
         }
-        else if ( authStatus == AVAuthorizationStatusDenied )
-        {
-            return AVAuthorizationStatusDenied;
-        }
-        else if ( authStatus == AVAuthorizationStatusRestricted )
-        {
-            return AVAuthorizationStatusRestricted;
-        }
-        else if ( authStatus == AVAuthorizationStatusNotDetermined )
-        {
-            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
-             {
-                 if ( granted )
-                 {
-                    NSLog( @"Granted access to %@", AVMediaTypeAudio );
-                 }
-                 else
-                 {
-                    NSLog( @"Not granted access to %@", AVMediaTypeAudio );
-                 }
-             }];
-
-            return AVAuthorizationStatusNotDetermined;
-        }
-        else
-        {
-            return true;
-        }
-        return false;
     }
 
     //==============================================================================
