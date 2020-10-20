@@ -2313,12 +2313,6 @@ private:
 
 };
 
-//==============================================================================
-AudioIODeviceType* AudioIODeviceType::createAudioIODeviceType_CoreAudio()
-{
-    return new CoreAudioClasses::CoreAudioIODeviceType();
-}
-
 #undef JUCE_COREAUDIOLOG
 
 } // namespace juce

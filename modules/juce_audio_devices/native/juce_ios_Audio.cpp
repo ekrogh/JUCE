@@ -1482,12 +1482,6 @@ void iOSAudioIODeviceType::handleAsyncUpdate()
 }
 
 //==============================================================================
-AudioIODeviceType* AudioIODeviceType::createAudioIODeviceType_iOSAudio()
-{
-    return new iOSAudioIODeviceType();
-}
-
-//==============================================================================
 AudioSessionHolder::AudioSessionHolder()    { nativeSession = [[iOSAudioSessionNative alloc] init: this]; }
 AudioSessionHolder::~AudioSessionHolder()   { [nativeSession release]; }
 
