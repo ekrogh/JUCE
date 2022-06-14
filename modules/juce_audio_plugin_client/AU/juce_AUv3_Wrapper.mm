@@ -2,15 +2,15 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2022 - Raw Material Software Limited
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   End User License Agreement: www.juce.com/juce-6-licence
+   End User License Agreement: www.juce.com/juce-7-licence
    Privacy Policy: www.juce.com/juce-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
@@ -58,6 +58,7 @@
 
 #include <juce_graphics/native/juce_mac_CoreGraphicsHelpers.h>
 #include <juce_audio_basics/native/juce_mac_CoreAudioLayouts.h>
+#include <juce_audio_basics/native/juce_mac_CoreAudioTimeConversions.h>
 #include <juce_audio_processors/format_types/juce_LegacyAudioParameter.cpp>
 #include <juce_audio_processors/format_types/juce_AU_Shared.h>
 
@@ -139,7 +140,7 @@ public:
 
     //==============================================================================
     virtual AUAudioUnitPreset* getCurrentPreset()                          = 0;
-    virtual void setCurrentPreset(AUAudioUnitPreset*)                      = 0;
+    virtual void setCurrentPreset (AUAudioUnitPreset*)                     = 0;
     virtual NSArray<AUAudioUnitPreset*>* getFactoryPresets()               = 0;
 
     virtual NSDictionary<NSString*, id>* getFullState()
@@ -523,22 +524,12 @@ public:
     //==============================================================================
     AUAudioUnitPreset* getCurrentPreset() override
     {
-        const int n = static_cast<int> ([factoryPresets.get() count]);
-        const int idx = static_cast<int> (getAudioProcessor().getCurrentProgram());
-
-        if (idx < n)
-            return [factoryPresets.get() objectAtIndex:static_cast<unsigned int> (idx)];
-
-        return nullptr;
+        return factoryPresets.getAtIndex (getAudioProcessor().getCurrentProgram());
     }
 
     void setCurrentPreset (AUAudioUnitPreset* preset) override
     {
-        const int n = static_cast<int> ([factoryPresets.get() count]);
-        const int idx = static_cast<int> ([preset number]);
-
-        if (isPositiveAndBelow (idx, n))
-            getAudioProcessor().setCurrentProgram (idx);
+        getAudioProcessor().setCurrentProgram (static_cast<int> ([preset number]));
     }
 
     NSArray<AUAudioUnitPreset*>* getFactoryPresets() override
@@ -982,7 +973,7 @@ public:
             {
                 const auto value = (newValue != nullptr ? *newValue : juceParam->getValue()) * getMaximumParameterValue (juceParam);
 
-                if (@available (macOS 10.12, *))
+                if (@available (macOS 10.12, iOS 10.0, *))
                 {
                     [param setValue: value
                          originator: editorObserverToken
@@ -1189,6 +1180,38 @@ private:
         int maxFrames, numberOfChannels;
         bool isInterleaved;
         juce::AudioBuffer<float> scratchBuffer;
+    };
+
+    class FactoryPresets
+    {
+    public:
+        using Presets = std::unique_ptr<NSMutableArray<AUAudioUnitPreset*>, NSObjectDeleter>;
+
+        void set (Presets newPresets)
+        {
+            std::lock_guard<std::mutex> lock (mutex);
+            std::swap (presets, newPresets);
+        }
+
+        NSArray* get() const
+        {
+            std::lock_guard<std::mutex> lock (mutex);
+            return presets.get();
+        }
+
+        AUAudioUnitPreset* getAtIndex (int index) const
+        {
+            std::lock_guard<std::mutex> lock (mutex);
+
+            if (index < (int) [presets.get() count])
+                return [presets.get() objectAtIndex: (unsigned int) index];
+
+            return nullptr;
+        }
+
+    private:
+        Presets presets;
+        mutable std::mutex mutex;
     };
 
     //==============================================================================
@@ -1434,7 +1457,7 @@ private:
 
     void addPresets()
     {
-        factoryPresets.reset ([[NSMutableArray<AUAudioUnitPreset*> alloc] init]);
+        FactoryPresets::Presets newPresets { [[NSMutableArray<AUAudioUnitPreset*> alloc] init] };
 
         const int n = getAudioProcessor().getNumPrograms();
 
@@ -1446,8 +1469,10 @@ private:
             [preset.get() setName: juceStringToNS (name)];
             [preset.get() setNumber: static_cast<NSInteger> (idx)];
 
-            [factoryPresets.get() addObject: preset.get()];
+            [newPresets.get() addObject: preset.get()];
         }
+
+        factoryPresets.set (std::move (newPresets));
     }
 
     //==============================================================================
@@ -1527,6 +1552,23 @@ private:
         jassert (static_cast<int> (frameCount) <= getAudioProcessor().getBlockSize());
 
         const auto numProcessorBusesOut = AudioUnitHelpers::getBusCount (processor, false);
+
+        if (timestamp != nullptr)
+        {
+            if ((timestamp->mFlags & kAudioTimeStampHostTimeValid) != 0)
+            {
+                const auto convertedTime = timeConversions.hostTimeToNanos (timestamp->mHostTime);
+                getAudioProcessor().setHostTimeNanos (&convertedTime);
+            }
+        }
+
+        struct AtEndOfScope
+        {
+            ~AtEndOfScope() { proc.setHostTimeNanos (nullptr); }
+            AudioProcessor& proc;
+        };
+
+        const AtEndOfScope scope { getAudioProcessor() };
 
         if (lastTimeStamp.mSampleTime != timestamp->mSampleTime)
         {
@@ -1771,6 +1813,7 @@ private:
 
     int totalInChannels, totalOutChannels;
 
+    CoreAudioTimeConversions timeConversions;
     std::unique_ptr<AUAudioUnitBusArray, NSObjectDeleter> inputBusses, outputBusses;
 
     ObjCBlock<AUImplementorValueObserver> paramObserver;
@@ -1792,7 +1835,7 @@ private:
     std::unique_ptr<AUParameterTree, NSObjectDeleter> paramTree;
     std::unique_ptr<NSMutableArray<NSNumber*>, NSObjectDeleter> overviewParams, channelCapabilities;
 
-    std::unique_ptr<NSMutableArray<AUAudioUnitPreset*>, NSObjectDeleter> factoryPresets;
+    FactoryPresets factoryPresets;
 
     ObjCBlock<AUInternalRenderBlock> internalRenderBlock;
 
@@ -2053,9 +2096,13 @@ private:
 
 //==============================================================================
 #if JUCE_IOS
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wmissing-prototypes")
+
 bool JUCE_CALLTYPE juce_isInterAppAudioConnected() { return false; }
 void JUCE_CALLTYPE juce_switchToHostApplication()  {}
 Image JUCE_CALLTYPE juce_getIAAHostIcon (int)      { return {}; }
+
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #endif
 
 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
