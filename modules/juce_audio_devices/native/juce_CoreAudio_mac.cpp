@@ -1425,10 +1425,11 @@ public:
           currentBufferSize (inputDevice->getCurrentBufferSizeSamples()),
           inputWrapper  (*this, std::move (inputDevice),  true),
           outputWrapper (*this, std::move (outputDevice), false)
-    {
+            // eks 16. sept. 2020 added Pimpl & checkAudioInputAccessPermissions
+        , pimpl (new Pimpl ())
+{
         if (getAvailableSampleRates().isEmpty())
             lastError = TRANS("The input and output devices don't share a common sample rate!");
-    }
 
     ~AudioIODeviceCombiner() override
     {
@@ -1685,6 +1686,9 @@ public:
     {
         return lastError;
     }
+    
+    // eks 16. sept. 2020 added checkAudioInputAccessPermissions
+    int checkAudioInputAccessPermissions( )  override        { return pimpl->checkAudioInputAccessPermissions( ); }
 
     int getXRunCount() const noexcept override
     {
@@ -2091,6 +2095,81 @@ private:
     };
 
     DeviceWrapper inputWrapper, outputWrapper;
+
+    OwnedArray<DeviceWrapper> devices;
+    
+        // eks 16. sept. 2020 added Pimpl
+        struct Pimpl;
+        std::unique_ptr<Pimpl> pimpl;
+
+
+        
+        // eks 16. sept. 2020 added Pimpl
+    struct Pimpl
+        {
+            Pimpl ()
+            {
+            }
+
+            ~Pimpl()
+            {
+            }
+
+        // eks 16. sept. 2020 added checkAudioInputAccessPermissions
+            int checkAudioInputAccessPermissions( )
+            {
+                if (@available(macOS 10.14, *)) // macOS 10.14 or newer
+                {
+                    AVAuthorizationStatus authStatus = [ AVCaptureDevice authorizationStatusForMediaType : AVMediaTypeAudio ];
+                    
+                    switch (authStatus)
+                    {
+                        case AVAuthorizationStatusAuthorized:
+                            {
+                                return AVAuthorizationStatusAuthorized;
+                                break;
+                            }
+                        case AVAuthorizationStatusDenied:
+                            {
+                                return AVAuthorizationStatusDenied;
+                                break;
+                            }
+                        case AVAuthorizationStatusRestricted:
+                            {
+                                return AVAuthorizationStatusRestricted;
+                                break;
+                            }
+                        case AVAuthorizationStatusNotDetermined:
+                            {
+                                [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted)
+                                 {
+                                     if ( granted )
+                                     {
+                                        NSLog( @"Granted access to %@", AVMediaTypeAudio );
+                                     }
+                                     else
+                                     {
+                                        NSLog( @"Not granted access to %@", AVMediaTypeAudio );
+                                     }
+                                 }];
+                                return AVAuthorizationStatusNotDetermined;
+                                break;
+                            }
+                        default:
+                            {
+                                return 3;
+                                break;
+                            }
+                    }
+                }
+                else
+                {
+                    return 3;
+                }
+            }
+            
+            JUCE_DECLARE_NON_COPYABLE (Pimpl)
+        };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioIODeviceCombiner)
 };
