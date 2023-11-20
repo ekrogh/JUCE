@@ -136,7 +136,6 @@ SystemStats::OperatingSystemType SystemStats::getOperatingSystemType()
         case 11: return MacOS_11;
         case 12: return MacOS_12;
         case 13: return MacOS_13;
-    // eks 28. sep. 2023 added case 14
         case 14: return MacOS_14;
     }
 
@@ -313,7 +312,7 @@ public:
         }
 
         highResTimerFrequency = (timebase.denom * (uint64) 1000000000) / timebase.numer;
-        highResTimerToMillisecRatio = hiResCounterNumerator / (double) hiResCounterDenominator;
+        highResTimerToMillisecRatio = (double) hiResCounterNumerator / (double) hiResCounterDenominator;
     }
 
     uint32 millisecondsSinceStartup() const noexcept
@@ -323,7 +322,7 @@ public:
 
     double getMillisecondCounterHiRes() const noexcept
     {
-        return mach_absolute_time() * highResTimerToMillisecRatio;
+        return (double) mach_absolute_time() * highResTimerToMillisecRatio;
     }
 
     int64 highResTimerFrequency;
