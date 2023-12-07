@@ -234,7 +234,7 @@ public:
 
     ~AudioDeviceSettingsPanel() override
     {
-        //setup.manager->removeChangeListener (this);
+        setup.manager->removeChangeListener (this);
     }
 
     void resized() override
