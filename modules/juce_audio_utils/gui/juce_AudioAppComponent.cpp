@@ -79,11 +79,13 @@ void AudioAppComponent::setAudioChannels (int numInputChannels, int numOutputCha
 void AudioAppComponent::shutdownAudio()
 {
     audioSourcePlayer.setSource (nullptr);
-    deviceManager.removeAudioCallback (&audioSourcePlayer);
 
     // other audio callbacks may still be using the device
-    if (! usingCustomDeviceManager)
+    if (!usingCustomDeviceManager)
+    {
+        deviceManager.removeAudioCallback (&audioSourcePlayer);
         deviceManager.closeAudioDevice();
+    }
 }
 
 } // namespace juce
