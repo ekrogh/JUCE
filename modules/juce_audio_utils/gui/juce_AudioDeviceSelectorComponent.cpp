@@ -1055,7 +1055,7 @@ AudioDeviceSelectorComponent::AudioDeviceSelectorComponent (AudioDeviceManager& 
 
 AudioDeviceSelectorComponent::~AudioDeviceSelectorComponent()
 {
-    //deviceManager.removeChangeListener (this);
+    deviceManager.removeChangeListener (this);
 }
 
 void AudioDeviceSelectorComponent::setItemHeight (int newItemHeight)
